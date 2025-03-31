@@ -1,0 +1,1673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cloud Hopper 3D</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            background-color: #000033;
+        }
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        #score-display {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px 15px;
+            border-radius: 10px;
+            z-index: 100;
+        }
+        #high-score-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px 15px;
+            border-radius: 10px;
+            z-index: 100;
+        }
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 200;
+        }
+        #start-screen h1 {
+            color: white;
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #00aaff, 0 0 20px #00aaff;
+        }
+        #start-button {
+            font-size: 24px;
+            padding: 15px 30px;
+            background-color: #00aaff;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 0 10px #00aaff;
+            transition: all 0.3s ease;
+        }
+        #start-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px #00aaff, 0 0 25px #00aaff;
+        }
+        #game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.9); /* 더 불투명하게 */
+            z-index: 1000; /* 최상위 레이어 */
+            pointer-events: auto;
+        }
+        #game-over h1 {
+            color: white;
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #ff0033, 0 0 20px #ff0033;
+            animation: pulsate 1.5s infinite alternate;
+        }
+        @keyframes pulsate {
+            0% { text-shadow: 0 0 10px #ff0033, 0 0 20px #ff0033; }
+            100% { text-shadow: 0 0 15px #ff0033, 0 0 30px #ff0033, 0 0 40px #ff0033; }
+        }
+        #final-score {
+            color: white;
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+        #high-score {
+            color: gold;
+            font-size: 24px;
+            margin-bottom: 30px;
+            text-shadow: 0 0 10px gold;
+        }
+        #restart-button {
+            font-size: 24px;
+            padding: 15px 30px;
+            background-color: #ff0033;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 0 10px #ff0033;
+            transition: all 0.3s ease;
+        }
+        #restart-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px #ff0033, 0 0 25px #ff0033;
+        }
+        .instructions {
+            color: white;
+            max-width: 600px;
+            text-align: center;
+            margin: 20px 0 30px 0;
+            font-size: 18px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="score-display">Score: 0</div>
+        <div id="high-score-display">High Score: 0</div>
+        
+        <div id="start-screen">
+            <h1>Cloud Hopper 3D</h1>
+            <div class="instructions">
+                <p>Jump from cloud to cloud and don't fall!</p>
+                <p>Use LEFT/RIGHT arrow keys to move</p>
+                <p>Press UP arrow to jump (press again for double jump)</p>
+            </div>
+            <button id="start-button">START</button>
+        </div>
+        
+        <div id="game-over">
+            <h1>Game Over</h1>
+            <div id="final-score">Score: 0</div>
+            <div id="high-score">High Score: 0</div>
+            <button id="restart-button">Play Again</button>
+        </div>
+    </div>
+    
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Vibe Jam 2025 참가 링크 -->
+    <a target="_blank" href="https://jam.pieter.com" style="font-family: 'system-ui', sans-serif; position: fixed; bottom: -1px; right: -1px; padding: 7px; font-size: 14px; font-weight: bold; background: #fff; color: #000; text-decoration: none; z-index: 10; border-top-left-radius: 12px; z-index: 10000; border: 1px solid #fff;">🕹️ Vibe Jam 2025</a>
+
+    <script>
+        // DOM 요소
+        const gameContainer = document.getElementById('game-container');
+        const scoreDisplay = document.getElementById('score-display');
+        const highScoreDisplay = document.getElementById('high-score-display');
+        const startScreen = document.getElementById('start-screen');
+        const startButton = document.getElementById('start-button');
+        const gameOverScreen = document.getElementById('game-over');
+        const finalScore = document.getElementById('final-score');
+        const highScoreElement = document.getElementById('high-score');
+        const restartButton = document.getElementById('restart-button');
+        
+        // 시작 시 게임오버 화면 숨기기
+        gameOverScreen.style.display = 'none';
+        
+        // Three.js 변수
+        let scene, camera, renderer;
+        let player;
+        let clouds = [];
+        let planets = []; // 행성 배열 추가
+        let starField;
+        let directionalLight;
+        
+        // 게임 변수
+        let score = 0;
+        let highScore = localStorage.getItem('highScore') || 0;
+        let gameActive = false;
+        let isFallingAnimation = false;
+        let playerX = 0;
+        let playerY = 0;
+        let playerZ = 0;
+        let velocityY = 0;
+        let velocityX = 0;
+        let gravity = 0.015;
+        let jumpForce = -0.4;
+        let isJumping = false;
+        let canDoubleJump = false;
+        let animationFrameId;
+        let cloudCount = 9; // 구름 수 증가 (6 -> 9)
+        let gameSpeed = 0.08; // 초기 속도
+        let baseGameSpeed = 0.08; // 기본 게임 속도
+        
+        // 최초 하이스코어 표시
+        highScoreDisplay.textContent = `High Score: ${highScore}`;
+        
+        // 이벤트 리스너
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', startGame);
+        
+        document.addEventListener('keydown', function(event) {
+            if (!gameActive) return;
+            
+            if (event.key === 'ArrowLeft') {
+                velocityX = -0.15;
+            }
+            if (event.key === 'ArrowRight') {
+                velocityX = 0.15;
+            }
+            if (event.key === 'ArrowUp') {
+                if (!isJumping) {
+                    jump();
+                } else if (canDoubleJump) {
+                    doubleJump();
+                }
+            }
+        });
+        
+        document.addEventListener('keyup', function(event) {
+            if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+                velocityX = 0;
+            }
+        });
+        
+        // Three.js 초기화
+        function initThree() {
+            // 씬 생성
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000033);
+            
+            // 카메라 생성
+            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 5, 10);
+            camera.lookAt(0, 0, 0);
+            
+            // 렌더러 생성
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            gameContainer.appendChild(renderer.domElement);
+            
+            // 조명 설정
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+            
+            directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(5, 10, 7.5);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 1024;
+            directionalLight.shadow.mapSize.height = 1024;
+            directionalLight.shadow.camera.near = 0.5;
+            directionalLight.shadow.camera.far = 50;
+            scene.add(directionalLight);
+            
+            // 개선된 우주 배경 생성
+            starField = createEnhancedStarField();
+            
+            // 창 크기 변경 이벤트
+            window.addEventListener('resize', function() {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+        
+        // 새로운 함수: 높이에 따른 게임 속도 조정
+        function adjustSpeedByHeight() {
+            // 시작 높이를 0으로 기준 삼음
+            const currentHeight = player.position.y;
+            
+            // 높이에 따른 추가 속도 (100 단위마다 0.02씩 증가)
+            const heightMultiplier = 0.0002;
+            const additionalSpeed = currentHeight * heightMultiplier;
+            
+            // 최종 게임 속도 계산 (최소 속도는 baseGameSpeed 유지)
+            gameSpeed = baseGameSpeed + additionalSpeed;
+            
+            // 최대 속도 제한 (너무 빨라지지 않도록)
+            const maxSpeed = 0.3;
+            if (gameSpeed > maxSpeed) {
+                gameSpeed = maxSpeed;
+            }
+        }
+        
+        // 다양한 색상과 크기의 별과 행성이 있는 우주 배경 생성
+        function createEnhancedStarField() {
+            // 기존 별 배경 생성
+            const starGeometry = new THREE.BufferGeometry();
+            const starCount = 2000;
+            const starPositions = [];
+            const starColors = [];
+            const starSizes = [];
+            
+            // 더 다양한 색상의 별들 생성
+            for (let i = 0; i < starCount; i++) {
+                const x = (Math.random() - 0.5) * 1000;
+                const y = (Math.random() - 0.5) * 1000;
+                const z = (Math.random() - 0.5) * 1000;
+                starPositions.push(x, y, z);
+                
+                // 별 크기 다양화
+                const size = Math.random() * 2 + 0.5;
+                starSizes.push(size);
+                
+                // 별 색상 다양화 (흰색, 노란색, 파란색, 빨간색 등)
+                const colorChoice = Math.random();
+                if (colorChoice < 0.7) {
+                    // 대부분 흰색~노란색 별
+                    const shade = 0.7 + Math.random() * 0.3;
+                    starColors.push(shade, shade, Math.max(0.7, shade - 0.2));
+                } else if (colorChoice < 0.8) {
+                    // 약간의 푸른 별
+                    starColors.push(0.7, 0.7, 1);
+                } else if (colorChoice < 0.9) {
+                    // 약간의 붉은 별
+                    starColors.push(1, 0.7, 0.7);
+                } else {
+                    // 약간의 청록색 별
+                    starColors.push(0.7, 1, 1);
+                }
+            }
+            
+            starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starPositions, 3));
+            starGeometry.setAttribute('color', new THREE.Float32BufferAttribute(starColors, 3));
+            
+            const starMaterial = new THREE.PointsMaterial({
+                vertexColors: true,
+                size: 1.5,
+                transparent: true,
+                opacity: 0.8,
+                sizeAttenuation: true
+            });
+            
+            const starField = new THREE.Points(starGeometry, starMaterial);
+            scene.add(starField);
+            
+            // 행성 추가 (픽셀화된 스타일)
+            addPixelPlanets();
+            
+            return starField;
+        }
+
+        // 픽셀화된 행성 추가 함수
+        function addPixelPlanets() {
+            // 행성의 종류와 색상 정의
+            const planetTypes = [
+                // 기존 행성들
+                { size: 8, color: 0x3498db, position: [-180, 100, -400] },  // 파란색 행성
+                { size: 12, color: 0x8e44ad, position: [200, -150, -350] }, // 보라색 행성
+                { size: 6, color: 0x1abc9c, position: [-100, -200, -300] }, // 청록색 행성
+                { size: 10, color: 0xe74c3c, position: [150, 180, -380] },  // 빨간색 행성
+                { size: 15, color: 0xf1c40f, position: [-220, -120, -420] }, // 노란색 행성
+                { size: 30, color: 0x3498db, position: [400, 50, -600] },   // 지구 (큰 파란색 행성)
+                { size: 25, color: 0xf39c12, position: [320, -80, -500] },   // 토성 (큰 주황색 행성)
+                
+                // 은하 왼쪽에 추가한 행성들
+                { size: 18, color: 0xe74c3c, position: [-350, 50, -550] },   // 붉은 화성형 행성
+                { size: 5, color: 0xf1c40f, position: [-280, 120, -480] },   // 작은 노란색 행성
+                { size: 14, color: 0x9b59b6, position: [-400, -100, -520] }, // 보라색 가스형 행성
+                { size: 8, color: 0x1abc9c, position: [-320, -180, -450] },  // 청록색 얼음 행성
+                { size: 7, color: 0xe67e22, position: [-430, 150, -500] },   // 작은 주황색 행성
+                { size: 20, color: 0x34495e, position: [-500, -50, -650] },   // 어두운 외곽 행성
+                
+                // 균형을 위해 오른쪽 행성들과 반대 위치에 추가할 새로운 행성들
+                { size: 28, color: 0x27ae60, position: [-420, -40, -580] },  // 큰 녹색 행성 (지구 반대편)
+                { size: 22, color: 0xd35400, position: [-380, 100, -520] },  // 큰 주황-갈색 행성 (토성 반대편)
+                { size: 16, color: 0xecf0f1, position: [-300, 200, -480] },  // 중간 크기 흰색 행성
+                { size: 10, color: 0xf1c40f, position: [-250, -220, -400] }, // 작은 노란색 행성
+                { size: 13, color: 0x2980b9, position: [-450, -150, -550] }  // 중간 크기 푸른색 얼음 행성
+            ];
+            
+            // 각 행성 생성
+            planetTypes.forEach((planet, index) => {
+                let planetMesh;
+                
+                // 지구 행성 (인덱스 5)
+                if (index === 5) {
+                    // 지구 생성 - 픽셀화된 모습을 위해 낮은 세그먼트 수 사용
+                    const geometry = new THREE.IcosahedronGeometry(planet.size, 1);
+                    
+                    // 픽셀화된 지구 재질
+                    const material = new THREE.MeshStandardMaterial({
+                        color: planet.color,
+                        flatShading: true,
+                        roughness: 0.7,
+                        metalness: 0.3
+                    });
+                    
+                    // 지구 대륙 효과를 위한 추가 디테일
+                    planetMesh = new THREE.Mesh(geometry, material);
+                    
+                    // 대륙을 표현하기 위한 랜덤 패턴
+                    const continentGeometry = new THREE.IcosahedronGeometry(planet.size * 1.01, 1);
+                    const continentMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x2ecc71, // 초록색 대륙
+                        flatShading: true,
+                        roughness: 0.9,
+                        metalness: 0.1,
+                        transparent: true,
+                        opacity: 0.7
+                    });
+                    
+                    // 대륙 메시 변형하여 일부만 보이게
+                    const continentMesh = new THREE.Mesh(continentGeometry, continentMaterial);
+                    
+                    // 정점 일부만 보이게 조절
+                    const positionAttribute = continentGeometry.getAttribute('position');
+                    const vertex = new THREE.Vector3();
+                    
+                    // 버텍스 작업을 위한 임시 배열
+                    const positions = [];
+                    const visible = [];
+                    
+                    for (let i = 0; i < positionAttribute.count; i++) {
+                        visible.push(Math.random() > 0.6); // 60% 확률로 대륙 부분 숨김
+                        
+                        vertex.fromBufferAttribute(positionAttribute, i);
+                        if (!visible[i]) {
+                            // 해당 버텍스 안보이게 (물 속으로)
+                            vertex.multiplyScalar(0.98);
+                        }
+                        
+                        positions.push(vertex.x, vertex.y, vertex.z);
+                    }
+                    
+                    continentGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                    planetMesh.add(continentMesh);
+                }
+                // 토성 행성 (인덱스 6)
+                else if (index === 6) {
+                    // 토성 본체
+                    const geometry = new THREE.IcosahedronGeometry(planet.size, 1);
+                    const material = new THREE.MeshStandardMaterial({
+                        color: planet.color,
+                        flatShading: true,
+                        roughness: 0.8,
+                        metalness: 0.2
+                    });
+                    
+                    planetMesh = new THREE.Mesh(geometry, material);
+                    
+                    // 토성 고리 추가
+                    const ringGeometry = new THREE.RingGeometry(planet.size * 1.3, planet.size * 1.7, 32);
+                    const ringMaterial = new THREE.MeshStandardMaterial({
+                        color: 0xf5deb3,
+                        flatShading: true,
+                        side: THREE.DoubleSide,
+                        transparent: true,
+                        opacity: 0.8
+                    });
+                    
+                    const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+                    ring.rotation.x = Math.PI / 2.5; // 고리 기울이기
+                    planetMesh.add(ring);
+                    
+                    // 추가 얇은 고리
+                    const thinRingGeometry = new THREE.RingGeometry(planet.size * 1.8, planet.size * 1.85, 32);
+                    const thinRingMaterial = new THREE.MeshStandardMaterial({
+                        color: 0xd2b48c,
+                        flatShading: true,
+                        side: THREE.DoubleSide,
+                        transparent: true,
+                        opacity: 0.5
+                    });
+                    
+                    const thinRing = new THREE.Mesh(thinRingGeometry, thinRingMaterial);
+                    thinRing.rotation.x = Math.PI / 2.5;
+                    planetMesh.add(thinRing);
+                }
+                // 붉은 화성형 행성 (인덱스 7)
+                else if (index === 7) {
+                    // 화성 본체
+                    const geometry = new THREE.IcosahedronGeometry(planet.size, 1);
+                    const material = new THREE.MeshStandardMaterial({
+                        color: planet.color,
+                        flatShading: true,
+                        roughness: 0.9,
+                        metalness: 0.1
+                    });
+                    
+                    planetMesh = new THREE.Mesh(geometry, material);
+                    
+                    // 표면 크레이터 추가
+                    for (let i = 0; i < 12; i++) {
+                        const craterSize = planet.size * (Math.random() * 0.1 + 0.05);
+                        const craterGeometry = new THREE.CircleGeometry(craterSize, 8);
+                        const craterMaterial = new THREE.MeshStandardMaterial({
+                            color: 0xc0392b,
+                            flatShading: true,
+                            side: THREE.DoubleSide
+                        });
+                        
+                        const crater = new THREE.Mesh(craterGeometry, craterMaterial);
+                        
+                        // 랜덤 위치에 크레이터 배치
+                        const phi = Math.acos(-1 + (2 * Math.random()));
+                        const theta = 2 * Math.PI * Math.random();
+                        
+                        crater.position.x = planet.size * Math.sin(phi) * Math.cos(theta) * 1.01;
+                        crater.position.y = planet.size * Math.sin(phi) * Math.sin(theta) * 1.01;
+                        crater.position.z = planet.size * Math.cos(phi) * 1.01;
+                        
+                        // 크레이터가 행성 표면을 향하도록 회전
+                        crater.lookAt(0, 0, 0);
+                        
+                        planetMesh.add(crater);
+                    }
+                    
+                    // 화성의 극지방 눈 덮인 모자 추가
+                    const polarCapGeometry = new THREE.CircleGeometry(planet.size * 0.4, 16);
+                    const polarCapMaterial = new THREE.MeshStandardMaterial({
+                        color: 0xffffff,
+                        flatShading: true,
+                        side: THREE.DoubleSide
+                    });
+                    
+                    // 북극 모자
+                    const northCap = new THREE.Mesh(polarCapGeometry, polarCapMaterial);
+                    northCap.position.y = planet.size * 0.9;
+                    northCap.rotation.x = Math.PI / 2;
+                    planetMesh.add(northCap);
+                    
+                    // 남극 모자 (더 작게)
+                    const southCap = new THREE.Mesh(
+                        new THREE.CircleGeometry(planet.size * 0.3, 16),
+                        polarCapMaterial
+                    );
+                    southCap.position.y = -planet.size * 0.9;
+                    southCap.rotation.x = -Math.PI / 2;
+                    planetMesh.add(southCap);
+                }
+                // 보라색 가스형 행성 (인덱스 9)
+                else if (index === 9) {
+                    // 가스형 행성 본체
+                    const geometry = new THREE.IcosahedronGeometry(planet.size, 1);
+                    const material = new THREE.MeshStandardMaterial({
+                        color: planet.color,
+                        flatShading: true,
+                        roughness: 0.5,
+                        metalness: 0.4
+                    });
+                    
+                    planetMesh = new THREE.Mesh(geometry, material);
+                    
+                    // 가스 행성 줄무늬 효과
+                    for (let i = 0; i < 5; i++) {
+                        const stripeHeight = planet.size * 0.15;
+                        const stripeY = (i - 2) * stripeHeight * 1.2;
+                        
+                        const stripeGeometry = new THREE.CylinderGeometry(
+                            planet.size * 1.01, 
+                            planet.size * 1.01, 
+                            stripeHeight, 
+                            16, 
+                            1, 
+                            true
+                        );
+                        
+                        // 번갈아가며 다른 색상 적용
+                        const stripeColor = i % 2 === 0 ? 0x8e44ad : 0x9b59b6;
+                        const stripeMaterial = new THREE.MeshStandardMaterial({
+                            color: stripeColor,
+                            flatShading: true,
+                            side: THREE.DoubleSide,
+                            transparent: true,
+                            opacity: 0.8
+                        });
+                        
+                        const stripe = new THREE.Mesh(stripeGeometry, stripeMaterial);
+                        stripe.position.y = stripeY;
+                        stripe.rotation.x = Math.PI / 2;
+                        
+                        planetMesh.add(stripe);
+                    }
+                    
+                    // 가스 행성 주변 희미한 링 추가
+                    const ringGeometry = new THREE.RingGeometry(planet.size * 1.4, planet.size * 1.8, 32);
+                    const ringMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x9b59b6,
+                        flatShading: true,
+                        side: THREE.DoubleSide,
+                        transparent: true,
+                        opacity: 0.3
+                    });
+                    
+                    const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+                    ring.rotation.x = Math.PI / 2;
+                    planetMesh.add(ring);
+                }
+                // 어두운 외곽 행성 (인덱스 12) - 달처럼 크레이터가 있는 행성
+                else if (index === 12) {
+                    // 행성 본체
+                    const geometry = new THREE.IcosahedronGeometry(planet.size, 1);
+                    const material = new THREE.MeshStandardMaterial({
+                        color: planet.color,
+                        flatShading: true,
+                        roughness: 1.0,
+                        metalness: 0.1
+                    });
+                    
+                    planetMesh = new THREE.Mesh(geometry, material);
+                    
+                    // 많은 크레이터 추가
+                    for (let i = 0; i < 25; i++) {
+                        const craterSize = planet.size * (Math.random() * 0.15 + 0.05);
+                        const craterGeometry = new THREE.CircleGeometry(craterSize, 8);
+                        const craterMaterial = new THREE.MeshStandardMaterial({
+                            color: 0x2c3e50,
+                            flatShading: true,
+                            side: THREE.DoubleSide
+                        });
+                        
+                        const crater = new THREE.Mesh(craterGeometry, craterMaterial);
+                        
+                        // 랜덤 위치에 크레이터 배치
+                        const phi = Math.acos(-1 + (2 * Math.random()));
+                        const theta = 2 * Math.PI * Math.random();
+                        
+                        crater.position.x = planet.size * Math.sin(phi) * Math.cos(theta) * 1.01;
+                        crater.position.y = planet.size * Math.sin(phi) * Math.sin(theta) * 1.01;
+                        crater.position.z = planet.size * Math.cos(phi) * 1.01;
+                        
+                        // 크레이터가 행성 표면을 향하도록 회전
+                        crater.lookAt(0, 0, 0);
+                        
+                        planetMesh.add(crater);
+                    }
+                }
+                // 큰 녹색 행성 (인덱스 13) - 정글형 행성
+                else if (index === 13) {
+                    // 행성 본체
+                    const geometry = new THREE.IcosahedronGeometry(planet.size, 1);
+                    const material = new THREE.MeshStandardMaterial({
+                        color: planet.color,
+                        flatShading: true,
+                        roughness: 0.8,
+                        metalness: 0.2
+                    });
+                    
+                    planetMesh = new THREE.Mesh(geometry, material);
+                    
+                    // 환상의 대기층 추가
+                    const atmosphereGeometry = new THREE.SphereGeometry(planet.size * 1.05, 16, 16);
+                    const atmosphereMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x2ecc71,
+                        flatShading: false,
+                        transparent: true,
+                        opacity: 0.3,
+                        side: THREE.DoubleSide
+                    });
+                    
+                    const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+                    planetMesh.add(atmosphere);
+                    
+                    // 표면에 정글과 호수 추가
+                    for (let i = 0; i < 15; i++) {
+                        // 초록색 정글 패치
+                        const patchSize = planet.size * (Math.random() * 0.3 + 0.1);
+                        const patchGeometry = new THREE.CircleGeometry(patchSize, 8);
+                        const patchMaterial = new THREE.MeshStandardMaterial({
+                            color: 0x229954,
+                            flatShading: true,
+                            side: THREE.DoubleSide
+                        });
+                        
+                        const patch = new THREE.Mesh(patchGeometry, patchMaterial);
+                        
+                        // 랜덤 위치에 정글 패치 배치
+                        const phi = Math.acos(-1 + (2 * Math.random()));
+                        const theta = 2 * Math.PI * Math.random();
+                        
+                        patch.position.x = planet.size * Math.sin(phi) * Math.cos(theta) * 1.01;
+                        patch.position.y = planet.size * Math.sin(phi) * Math.sin(theta) * 1.01;
+                        patch.position.z = planet.size * Math.cos(phi) * 1.01;
+                        
+                        // 패치가 행성 표면을 향하도록 회전
+                        patch.lookAt(0, 0, 0);
+                        
+                        planetMesh.add(patch);
+                        
+                        // 일부 패치는 호수로 만들기
+                        if (i % 3 === 0) {
+                            const lakeSize = patchSize * 0.7;
+                            const lakeGeometry = new THREE.CircleGeometry(lakeSize, 8);
+                            const lakeMaterial = new THREE.MeshStandardMaterial({
+                                color: 0x3498db,
+                                flatShading: true,
+                                side: THREE.DoubleSide,
+                                transparent: true,
+                                opacity: 0.8
+                            });
+                            
+                            const lake = new THREE.Mesh(lakeGeometry, lakeMaterial);
+                            lake.position.set(patch.position.x * 1.001, patch.position.y * 1.001, patch.position.z * 1.001);
+                            lake.lookAt(0, 0, 0);
+                            
+                            planetMesh.add(lake);
+                        }
+                    }
+                }
+                // 주황-갈색 행성 (인덱스 14) - 용암 행성
+                else if (index === 14) {
+                    // 행성 본체
+                    const geometry = new THREE.IcosahedronGeometry(planet.size, 1);
+                    const material = new THREE.MeshStandardMaterial({
+                        color: planet.color,
+                        flatShading: true,
+                        roughness: 0.6,
+                        metalness: 0.4,
+                        emissive: 0x992d00,
+                        emissiveIntensity: 0.2
+                    });
+                    
+                    planetMesh = new THREE.Mesh(geometry, material);
+                    
+                    // 용암 흐름 추가
+                    for (let i = 0; i < 12; i++) {
+                        // 용암 패치
+                        const lavaSize = planet.size * (Math.random() * 0.25 + 0.1);
+                        const lavaGeometry = new THREE.CircleGeometry(lavaSize, 8);
+                        const lavaMaterial = new THREE.MeshStandardMaterial({
+                            color: 0xff5500,
+                            flatShading: true,
+                            side: THREE.DoubleSide,
+                            emissive: 0xff3300,
+                            emissiveIntensity: 0.5
+                        });
+                        
+                        const lava = new THREE.Mesh(lavaGeometry, lavaMaterial);
+                        
+                        // 랜덤 위치에 용암 배치
+                        const phi = Math.acos(-1 + (2 * Math.random()));
+                        const theta = 2 * Math.PI * Math.random();
+                        
+                        lava.position.x = planet.size * Math.sin(phi) * Math.cos(theta) * 1.01;
+                        lava.position.y = planet.size * Math.sin(phi) * Math.sin(theta) * 1.01;
+                        lava.position.z = planet.size * Math.cos(phi) * 1.01;
+                        
+                        lava.lookAt(0, 0, 0);
+                        
+                        // 용암 시각 효과 (빛)
+                        const lavaLight = new THREE.PointLight(0xff5500, 0.5, planet.size * 3);
+                        lavaLight.position.set(0, 0, 0);
+                        lava.add(lavaLight);
+                        
+                        planetMesh.add(lava);
+                    }
+                    
+                    // 얇은 화산재 대기층
+                    const ashGeometry = new THREE.SphereGeometry(planet.size * 1.1, 16, 16);
+                    const ashMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x5d4037,
+                        flatShading: false,
+                        transparent: true,
+                        opacity: 0.2,
+                        side: THREE.DoubleSide
+                    });
+                    
+                    const ash = new THREE.Mesh(ashGeometry, ashMaterial);
+                    planetMesh.add(ash);
+                }
+                // 흰색 행성 (인덱스 15) - 얼음/눈 행성
+                else if (index === 15) {
+                    // 행성 본체
+                    const geometry = new THREE.IcosahedronGeometry(planet.size, 1);
+                    const material = new THREE.MeshStandardMaterial({
+                        color: planet.color,
+                        flatShading: true,
+                        roughness: 0.3,
+                        metalness: 0.8
+                    });
+                    
+                    planetMesh = new THREE.Mesh(geometry, material);
+                    
+                    // 얼음 결정 효과 추가
+                    for (let i = 0; i < 30; i++) {
+                        // 얼음 결정 형태
+                        const crystalSize = planet.size * (Math.random() * 0.15 + 0.05);
+                        const crystalGeometry = new THREE.ConeGeometry(crystalSize * 0.5, crystalSize, 6);
+                        const crystalMaterial = new THREE.MeshStandardMaterial({
+                            color: 0xffffff,
+                            flatShading: true,
+                            transparent: true,
+                            opacity: 0.8,
+                            side: THREE.DoubleSide
+                        });
+                        
+                        const crystal = new THREE.Mesh(crystalGeometry, crystalMaterial);
+                        
+                        // 랜덤 위치에 결정 배치
+                        const phi = Math.acos(-1 + (2 * Math.random()));
+                        const theta = 2 * Math.PI * Math.random();
+                        
+                        crystal.position.x = planet.size * Math.sin(phi) * Math.cos(theta) * 1.01;
+                        crystal.position.y = planet.size * Math.sin(phi) * Math.sin(theta) * 1.01;
+                        crystal.position.z = planet.size * Math.cos(phi) * 1.01;
+                        
+                        // 결정이 바깥쪽을 향하도록 방향 조정
+                        crystal.lookAt(crystal.position.x * 2, crystal.position.y * 2, crystal.position.z * 2);
+                        
+                        planetMesh.add(crystal);
+                    }
+                    
+                    // 반짝이는 에너지장 추가
+                    const fieldGeometry = new THREE.SphereGeometry(planet.size * 1.15, 16, 16);
+                    const fieldMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x84ffff,
+                        flatShading: false,
+                        transparent: true,
+                        opacity: 0.15,
+                        side: THREE.DoubleSide
+                    });
+                    
+                    const field = new THREE.Mesh(fieldGeometry, fieldMaterial);
+                    planetMesh.add(field);
+                }
+                // 푸른색 얼음 행성 (인덱스 17) - 물/얼음 행성
+                else if (index === 17) {
+                    // 행성 본체
+                    const geometry = new THREE.IcosahedronGeometry(planet.size, 1);
+                    const material = new THREE.MeshStandardMaterial({
+                        color: planet.color,
+                        flatShading: true,
+                        roughness: 0.5,
+                        metalness: 0.3
+                    });
+                    
+                    planetMesh = new THREE.Mesh(geometry, material);
+                    
+                    // 물과 얼음 효과 추가
+                    for (let i = 0; i < 20; i++) {
+                        // 얼음 패치 (흰색 덩어리)
+                        const iceSize = planet.size * (Math.random() * 0.2 + 0.1);
+                        const iceGeometry = new THREE.CircleGeometry(iceSize, 8);
+                        const iceMaterial = new THREE.MeshStandardMaterial({
+                            color: 0xffffff,
+                            flatShading: true,
+                            side: THREE.DoubleSide
+                        });
+                        
+                        const ice = new THREE.Mesh(iceGeometry, iceMaterial);
+                        
+                        // 랜덤 위치에 얼음 배치
+                        const phi = Math.acos(-1 + (2 * Math.random()));
+                        const theta = 2 * Math.PI * Math.random();
+                        
+                        ice.position.x = planet.size * Math.sin(phi) * Math.cos(theta) * 1.01;
+                        ice.position.y = planet.size * Math.sin(phi) * Math.sin(theta) * 1.01;
+                        ice.position.z = planet.size * Math.cos(phi) * 1.01;
+                        
+                        ice.lookAt(0, 0, 0);
+                        
+                        planetMesh.add(ice);
+                    }
+                    
+                    // 물 효과 (반투명 청색 층)
+                    const waterGeometry = new THREE.SphereGeometry(planet.size * 1.03, 24, 24);
+                    const waterMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x3498db,
+                        flatShading: false,
+                        transparent: true,
+                        opacity: 0.4,
+                        side: THREE.DoubleSide
+                    });
+                    
+                    const water = new THREE.Mesh(waterGeometry, waterMaterial);
+                    planetMesh.add(water);
+                }
+                else {
+                    // 기본 행성 생성
+                    const geometry = new THREE.IcosahedronGeometry(planet.size, 0);
+                    const material = new THREE.MeshStandardMaterial({
+                        color: planet.color,
+                        flatShading: true,
+                        roughness: 0.8,
+                        metalness: 0.2
+                    });
+                    
+                    planetMesh = new THREE.Mesh(geometry, material);
+                }
+                
+                // 행성 위치 설정
+                planetMesh.position.set(...planet.position);
+                
+                // 랜덤한 회전 적용
+                planetMesh.rotation.x = Math.random() * Math.PI;
+                planetMesh.rotation.y = Math.random() * Math.PI;
+                planetMesh.rotation.z = Math.random() * Math.PI;
+                
+                scene.add(planetMesh);
+                
+                // 간단한 애니메이션을 위한 업데이트 함수 등록
+                const rotationSpeed = 0.001 + Math.random() * 0.001;
+                const rotationAxis = new THREE.Vector3(
+                    Math.random() - 0.5,
+                    Math.random() - 0.5,
+                    Math.random() - 0.5
+                ).normalize();
+                
+                // 행성 회전 업데이트 함수 등록
+                planetMesh.updateRotation = function() {
+                    planetMesh.rotateOnAxis(rotationAxis, rotationSpeed);
+                };
+                
+                // 행성들을 추적하기 위해 배열에 추가
+                planets.push(planetMesh);
+            });
+            
+            // 특별한 은하 생성 (배경에 큰 원형 구조물)
+            createGalaxy(-400, -350, -800, 0x00ffff);
+        }
+
+        // 은하 생성 함수
+        function createGalaxy(x, y, z, color) {
+            const particleCount = 1500; // 입자 수 증가
+            const geometry = new THREE.BufferGeometry();
+            const positions = [];
+            const colors = [];
+            
+            // 은하 구조 생성
+            for (let i = 0; i < particleCount; i++) {
+                // 나선형 은하 모양 생성
+                const radius = 50 + Math.random() * 200; // 반경 증가
+                const angle = Math.random() * Math.PI * 2;
+                const spiral = Math.random() * Math.PI * 6; // 더 많은 나선형 회전
+                
+                const px = Math.cos(angle + spiral) * radius;
+                const py = (Math.random() - 0.5) * 25;  // 두께 증가
+                const pz = Math.sin(angle + spiral) * radius;
+                
+                positions.push(px, py, pz);
+                
+                // 중앙에서 멀어질수록 색상 변화
+                const distance = Math.sqrt(px*px + pz*pz) / 250;
+                
+                // 다양한 은하 색상 추가
+                let r, g, b;
+                
+                // 중앙 부분은 더 밝게
+                if (distance < 0.3) {
+                    r = 0.9 - distance;
+                    g = 0.8 - distance;
+                    b = 1.0;
+                } else {
+                    // 은하 외곽은 더 푸르스름하게
+                    r = 0.3 + distance * 0.4;
+                    g = 0.5 + distance * 0.3;
+                    b = 0.8 + distance * 0.2;
+                }
+                
+                colors.push(r, g, b);
+            }
+            
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            
+            const material = new THREE.PointsMaterial({
+                size: 3.5, // 입자 크기 증가
+                sizeAttenuation: true,
+                transparent: true,
+                opacity: 0.8,
+                vertexColors: true
+            });
+            
+            const galaxy = new THREE.Points(geometry, material);
+            galaxy.position.set(x, y, z);
+            scene.add(galaxy);
+            
+            // 두 번째 은하 층 추가 (더 작고 밝은 중심부)
+            const coreGeometry = new THREE.BufferGeometry();
+            const corePositions = [];
+            const coreColors = [];
+            
+            // 중심부 생성
+            for (let i = 0; i < 500; i++) {
+                const radius = Math.random() * 60;
+                const angle = Math.random() * Math.PI * 2;
+                const spiral = Math.random() * Math.PI * 2;
+                
+                const px = Math.cos(angle + spiral) * radius;
+                const py = (Math.random() - 0.5) * 10;
+                const pz = Math.sin(angle + spiral) * radius;
+                
+                corePositions.push(px, py, pz);
+                
+                // 중심부는 밝은 푸른색/자주색 계열
+                const r = 0.6 + Math.random() * 0.4;
+                const g = 0.4 + Math.random() * 0.3;
+                const b = 0.9 + Math.random() * 0.1;
+                
+                coreColors.push(r, g, b);
+            }
+            
+            coreGeometry.setAttribute('position', new THREE.Float32BufferAttribute(corePositions, 3));
+            coreGeometry.setAttribute('color', new THREE.Float32BufferAttribute(coreColors, 3));
+            
+            const coreMaterial = new THREE.PointsMaterial({
+                size: 2.5,
+                sizeAttenuation: true,
+                transparent: true,
+                opacity: 1.0,
+                vertexColors: true
+            });
+            
+            const galaxyCore = new THREE.Points(coreGeometry, coreMaterial);
+            galaxyCore.position.set(x, y, z);
+            scene.add(galaxyCore);
+            
+            // 은하도 행성처럼 회전하게 하기 위해 planets 배열에 추가
+            const rotationSpeed = 0.0003;
+            const rotationAxis = new THREE.Vector3(0, 1, 0).normalize();
+            
+            galaxy.updateRotation = function() {
+                galaxy.rotateOnAxis(rotationAxis, rotationSpeed);
+            };
+            
+            galaxyCore.updateRotation = function() {
+                galaxyCore.rotateOnAxis(rotationAxis, rotationSpeed * 1.5);
+            };
+            
+            planets.push(galaxy);
+            planets.push(galaxyCore);
+            
+            // 추가: 더 작은 은하 생성 (위성 은하)
+            if (Math.random() > 0.5) {
+                createSatelliteGalaxy(x - 250, y + 100, z - 100, 0.5, 0.6);
+                createSatelliteGalaxy(x + 300, y - 150, z - 150, 0.4, 0.4);
+            }
+            
+            return galaxy;
+        }
+        
+        // 새로운 함수: 위성 은하 생성
+        function createSatelliteGalaxy(x, y, z, scale, opacity) {
+            const particleCount = 300;
+            const geometry = new THREE.BufferGeometry();
+            const positions = [];
+            const colors = [];
+            
+            // 작은 은하 구조 생성
+            for (let i = 0; i < particleCount; i++) {
+                const radius = 20 + Math.random() * 50;
+                const angle = Math.random() * Math.PI * 2;
+                
+                const px = Math.cos(angle) * radius;
+                const py = (Math.random() - 0.5) * 10;
+                const pz = Math.sin(angle) * radius;
+                
+                positions.push(px, py, pz);
+                
+                // 위성 은하 색상
+                const r = 0.5 + Math.random() * 0.5;
+                const g = 0.5 + Math.random() * 0.5;
+                const b = 0.8 + Math.random() * 0.2;
+                
+                colors.push(r, g, b);
+            }
+            
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            
+            const material = new THREE.PointsMaterial({
+                size: 2.0 * scale,
+                sizeAttenuation: true,
+                transparent: true,
+                opacity: opacity,
+                vertexColors: true
+            });
+            
+            const satelliteGalaxy = new THREE.Points(geometry, material);
+            satelliteGalaxy.position.set(x, y, z);
+            satelliteGalaxy.scale.set(scale, scale, scale);
+            
+            // 약간 기울이기
+            satelliteGalaxy.rotation.x = Math.random() * Math.PI / 4;
+            satelliteGalaxy.rotation.z = Math.random() * Math.PI / 4;
+            
+            scene.add(satelliteGalaxy);
+            
+            // 회전 업데이트 함수
+            const rotationSpeed = 0.001;
+            const rotationAxis = new THREE.Vector3(0, 1, 0).normalize();
+            
+            satelliteGalaxy.updateRotation = function() {
+                satelliteGalaxy.rotateOnAxis(rotationAxis, rotationSpeed);
+            };
+            
+            planets.push(satelliteGalaxy);
+            
+            return satelliteGalaxy;
+        }
+
+        // 행성 업데이트 함수
+        function updatePlanets() {
+            // 모든 행성 회전 업데이트
+            planets.forEach(planet => {
+                if (planet.updateRotation) {
+                    planet.updateRotation();
+                }
+            });
+        }
+        
+        // 플레이어 생성
+        function createPlayer() {
+            // 플레이어 기본 형태 (구)
+            const geometry = new THREE.SphereGeometry(0.5, 32, 32);
+            
+            // 빛나는 이펙트를 위한 재질
+            const material = new THREE.MeshStandardMaterial({
+                color: 0xff0000,
+                emissive: 0xff0000,
+                emissiveIntensity: 0.5,
+                metalness: 0.3,
+                roughness: 0.4
+            });
+            
+            player = new THREE.Mesh(geometry, material);
+            player.castShadow = true;
+            
+            // 시작 위치 설정
+            const startCloud = clouds[0];
+            playerY = startCloud.position.y + 1;
+            player.position.set(0, playerY, 0);
+            
+            scene.add(player);
+            
+            // 플레이어 주변 발광 효과
+            const glow = new THREE.PointLight(0xff0000, 1, 5);
+            glow.position.set(0, 0, 0);
+            player.add(glow);
+            
+            // 떨어질 때 회전 효과를 위한 초기화
+            player.rotation.x = 0;
+            player.rotation.y = 0;
+            player.rotation.z = 0;
+        }
+        
+        // 단일 구름 생성
+        function createCloud(x, y, z, isStartCloud = false) {
+            // 구름 그룹 생성
+            const cloudGroup = new THREE.Group();
+            
+            // 구름 크기 결정
+            let cloudSize;
+            let cloudType = '';
+            
+            const sizeRand = Math.random();
+            if (isStartCloud) {
+                cloudSize = 3;
+                cloudType = 'large';
+            } else if (sizeRand < 0.35) {
+                cloudSize = 1.8;
+                cloudType = 'small';
+            } else if (sizeRand > 0.8) {
+                cloudSize = 3;
+                cloudType = 'large';
+            } else {
+                cloudSize = 2.2;
+                cloudType = 'medium';
+            }
+            
+            // 메인 구름 생성
+            const cloudGeometry = new THREE.SphereGeometry(cloudSize, 16, 16);
+            const cloudMaterial = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                roughness: 0.7,
+                metalness: 0.2,
+                flatShading: true
+            });
+            
+            const mainCloud = new THREE.Mesh(cloudGeometry, cloudMaterial);
+            mainCloud.scale.y = 0.3;
+            mainCloud.receiveShadow = true;
+            cloudGroup.add(mainCloud);
+            
+            // 구름 군데군데 추가 부분 생성
+            const puffCount = isStartCloud ? 8 : Math.floor(Math.random() * 4) + 3;
+            for (let i = 0; i < puffCount; i++) {
+                const puffSize = cloudSize * (Math.random() * 0.4 + 0.3);
+                const puff = new THREE.Mesh(
+                    new THREE.SphereGeometry(puffSize, 8, 8),
+                    cloudMaterial
+                );
+                
+                // 구름 주변에 배치
+                const angle = (i / puffCount) * Math.PI * 2;
+                const radius = cloudSize * 0.8;
+                puff.position.set(
+                    Math.cos(angle) * radius,
+                    (Math.random() - 0.5) * cloudSize * 0.2,
+                    Math.sin(angle) * radius
+                );
+                
+                puff.scale.y = 0.3;
+                puff.receiveShadow = true;
+                cloudGroup.add(puff);
+            }
+            
+            // 구름 위치 설정
+            cloudGroup.position.set(x, y, z);
+            cloudGroup.cloudSize = cloudSize;
+            cloudGroup.cloudType = cloudType;
+            cloudGroup.landed = false;
+            cloudGroup.canLand = true; // 구름에 착지 가능 여부 플래그 추가
+            
+            scene.add(cloudGroup);
+            clouds.push(cloudGroup);
+            
+            return cloudGroup;
+        }
+        
+        // 초기 구름 생성 - 수정됨: 간격 더 넓게
+        function createInitialClouds() {
+            // 시작 구름 (중앙 위치)
+            const startCloud = createCloud(0, 0, 0, true);
+            startCloud.landed = true;
+            
+            // 추가 구름 생성
+            const verticalSpacing = 6.0; // 간격 더 증가 (4.0 -> 6.0)
+            
+            for (let i = 1; i < cloudCount; i++) {
+                // X 위치 계산
+                let x;
+                
+                if (i === 1) {
+                    // 첫 번째 구름은 시작 지점에서 좀 더 멀리
+                    x = (Math.random() * 8 - 4);
+                } else {
+                    // 이전 구름 기준 배치
+                    const prevCloud = clouds[clouds.length - 1];
+                    const prevX = prevCloud.position.x;
+                    
+                    // 적절한 점프 거리 - 간격 더 증가
+                    const jumpRange = 8.0; // 증가 (6.5 -> 8.0)
+                    const minX = Math.max(-10, prevX - jumpRange);
+                    const maxX = Math.min(10, prevX + jumpRange);
+                    
+                    x = minX + Math.random() * (maxX - minX);
+                }
+                
+                const y = verticalSpacing * i;
+                const z = 0;
+                createCloud(x, y, z);
+            }
+        }
+        
+        // 점프 함수 - 수정됨: 점프 시 구름 페이드아웃
+        function jump() {
+            isJumping = true;
+            canDoubleJump = true;
+            velocityY = jumpForce;
+            
+            // 점프 소리 효과
+            playJumpSound();
+            
+            // 추가: 밟고 있는 구름 찾아서 페이드아웃
+            fadeCurrentCloud();
+        }
+        
+        // 이단 점프 함수
+        function doubleJump() {
+            canDoubleJump = false;
+            velocityY = jumpForce * 0.85;
+            
+            // 이단 점프 소리 효과
+            playDoubleJumpSound();
+        }
+        
+        // 새로운 함수: 현재 밟고 있는 구름 찾아 페이드아웃
+        function fadeCurrentCloud() {
+            // 플레이어 위치에서 아래로 약간 떨어진 위치 확인
+            const playerX = player.position.x;
+            const playerY = player.position.y - 1.1; // 발 아래 위치
+            
+            // 가장 가까운 구름 찾기
+            let closestCloud = null;
+            let minDistance = Infinity;
+            
+            for (let i = 0; i < clouds.length; i++) {
+                const cloud = clouds[i];
+                
+                // 이미 페이드아웃 중인 구름은 건너뜀
+                if (!cloud.canLand) continue;
+                
+                const distanceX = Math.abs(playerX - cloud.position.x);
+                const distanceY = Math.abs(playerY - cloud.position.y);
+                
+                // 수평 거리가 구름 크기 내이고, 수직 거리가 가까운 경우
+                if (distanceX < cloud.cloudSize && distanceY < 0.5) {
+                    const totalDistance = distanceX + distanceY;
+                    if (totalDistance < minDistance) {
+                        minDistance = totalDistance;
+                        closestCloud = cloud;
+                    }
+                }
+            }
+            
+            // 가장 가까운 구름이 있으면 페이드아웃
+            if (closestCloud) {
+                fadeOutCloud(closestCloud);
+            }
+        }
+        
+        // 소리 효과 함수 (간단한 구현)
+        function playJumpSound() {
+            try {
+                const audio = new Audio();
+                audio.src = 'data:audio/wav;base64,UklGRgQMAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YeALAACAgICAgICAgICAgICAgICAgICAgICAgIDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMCAAgICAgIDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMCA';
+                audio.volume = 0.3;
+                audio.play();
+            } catch (e) {
+                console.log('Sound not supported');
+            }
+        }
+
+        // 구름 페이드아웃 효과
+        function fadeOutCloud(cloud) {
+            let opacity = 1.0;
+            
+            // 즉시 구름을 밟을 수 없게 설정
+            cloud.canLand = false;
+            
+            const fadeInterval = setInterval(() => {
+                opacity -= 0.05;
+                
+                if (opacity <= 0) {
+                    clearInterval(fadeInterval);
+                    // 이미 사라진 구름은 제거하지 않음 (게임 루프에서 처리)
+                } else {
+                    // 구름의 모든 메시 재질 투명도 조정
+                    cloud.traverse((child) => {
+                        if (child.isMesh && child.material) {
+                            child.material.transparent = true;
+                            child.material.opacity = opacity;
+                        }
+                    });
+                }
+            }, 50);
+        }
+
+        // 게임 속도 증가
+        function increaseGameSpeed() {
+            if (score < 100) {
+                baseGameSpeed += 0.006; // 증가율 상향 (0.004 -> 0.006)
+            } else if (score < 300) {
+                baseGameSpeed += 0.008; // 증가율 상향 (0.005 -> 0.008)
+            } else {
+                baseGameSpeed += 0.01; // 증가율 상향 (0.006 -> 0.01)
+            }
+        }
+        function checkCloudCollision() {
+            if (!player) return false;
+            
+            // 오르고 있을 때는 체크하지 않음
+            if (velocityY < 0) return false;
+            
+            let onCloud = false;
+            let landedCloudIndex = -1;
+            
+            for (let i = 0; i < clouds.length; i++) {
+                const cloud = clouds[i];
+                
+                // 구름에 착지할 수 없으면 건너뜀 (페이드아웃 중인 구름)
+                if (!cloud.canLand) continue;
+                
+                // 플레이어와 구름 사이의 거리 계산
+                const distanceX = Math.abs(player.position.x - cloud.position.x);
+                const distanceY = player.position.y - cloud.position.y;
+                const distanceZ = Math.abs(player.position.z - cloud.position.z);
+                
+                // 수평 거리가 구름 크기 내이고, 수직으로 플레이어가 구름 위에 있는지 확인
+                if (distanceX < cloud.cloudSize && 
+                    distanceZ < cloud.cloudSize && 
+                    distanceY > 0 && distanceY < 1) {
+                    
+                    // 구름에 착지
+                    player.position.y = cloud.position.y + 1;
+                    velocityY = 0;
+                    isJumping = false;
+                    canDoubleJump = false;
+                    onCloud = true;
+                    landedCloudIndex = i;
+                    
+                    // 새로운 구름에 착지할 때 점수 추가
+                    if (!cloud.landed) {
+                        cloud.landed = true;
+                        score += 10;
+                        scoreDisplay.textContent = `Score: ${score}`;
+                        
+                        // 점수에 따른 게임 속도 증가
+                        if (score % 30 === 0) {
+                            increaseGameSpeed();
+                        }
+                    }
+                    
+                    break;
+                }
+            }
+            
+            return onCloud;
+        }
+
+        // 게임 시작
+        function startGame() {
+            // 이전 게임 리셋
+            resetGame();
+            
+            // 화면 설정
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            
+            if (!scene) {
+                // 처음 시작 시 Three.js 초기화
+                initThree();
+            } else {
+                // 장면 정리
+                while (scene.children.length > 0) {
+                    const obj = scene.children[0];
+                    scene.remove(obj);
+                }
+                
+                // 기본 요소 재생성
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+                scene.add(ambientLight);
+                
+                directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+                directionalLight.position.set(5, 10, 7.5);
+                directionalLight.castShadow = true;
+                scene.add(directionalLight);
+                
+                // 개선된 우주 배경 생성
+                starField = createEnhancedStarField();
+            }
+            
+            // 초기 구름 생성
+            createInitialClouds();
+            
+            // 플레이어 생성
+            createPlayer();
+            
+            // 게임 시작
+            gameActive = true;
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        // 게임 리셋
+        function resetGame() {
+            // 변수 초기화
+            clouds = [];
+            planets = []; // 행성 배열도 초기화
+            score = 0;
+            scoreDisplay.textContent = `Score: 0`;
+            velocityY = 0;
+            velocityX = 0;
+            isJumping = false;
+            canDoubleJump = false;
+            gameSpeed = baseGameSpeed; // 초기 속도로 리셋
+            isFallingAnimation = false;
+            
+            // 애니메이션 프레임 취소
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+        }
+
+        // 게임 루프 - 수정됨
+        function gameLoop() {
+            if (!gameActive && !isFallingAnimation) return;
+            
+            // 플레이어 이동
+            playerX = player.position.x + velocityX;
+            player.position.x = playerX;
+            
+            // 중력 적용
+            velocityY += gravity;
+            player.position.y -= velocityY;
+            
+            // 화면 경계 체크
+            if (player.position.x < -10) {
+                player.position.x = -10;
+            } else if (player.position.x > 10) {
+                player.position.x = 10;
+            }
+            
+            if (gameActive) {
+                // 구름 충돌 체크
+                const onCloud = checkCloudCollision();
+                
+                // 높이에 따른 게임 속도 조정
+                adjustSpeedByHeight();
+                
+                // 구름 이동 (아래로)
+                for (let i = clouds.length - 1; i >= 0; i--) {
+                    const cloud = clouds[i];
+                    cloud.position.y -= gameSpeed;
+                    
+                    // 화면 아래로 나간 구름이나 플레이어보다 너무 낮은 구름은 제거
+                    if (cloud.position.y < -10 || cloud.position.y < player.position.y - 10) {
+                        scene.remove(cloud);
+                        clouds.splice(i, 1);
+                        
+                        // 새 구름 생성
+                        // 가장 높은 구름 찾기
+                        let highestY = -Infinity;
+                        let highestCloud = null;
+                        
+                        for (let j = 0; j < clouds.length; j++) {
+                            if (clouds[j].position.y > highestY) {
+                                highestY = clouds[j].position.y;
+                                highestCloud = clouds[j];
+                            }
+                        }
+                        
+                        // 새 구름 위치 계산
+                        const newY = highestY + 6.0; // 간격 더 증가 (4.0 -> 6.0)
+                        let newX;
+                        
+                        if (highestCloud) {
+                            const prevX = highestCloud.position.x;
+                            const jumpRange = 8.0; // 증가 (6.5 -> 8.0)
+                            const minX = Math.max(-10, prevX - jumpRange);
+                            const maxX = Math.min(10, prevX + jumpRange);
+                            newX = minX + Math.random() * (maxX - minX);
+                        } else {
+                            newX = (Math.random() - 0.5) * 20;
+                        }
+                        
+                        createCloud(newX, newY, 0);
+                    }
+                }
+                
+                // 게임 오버 체크 (플레이어가 화면 아래로 떨어짐) - 수정된 부분
+                // 체크 범위를 적절하게 조정
+                if (player.position.y < camera.position.y - 6) {
+                    console.log("Player fell off - starting falling animation");
+                    startFallingAnimation();
+                    return;
+                }
+            }
+            
+            // 카메라 플레이어 따라가기
+            camera.position.y = player.position.y + 5;
+            camera.lookAt(player.position.x, player.position.y, 0);
+            
+            // 배경 별 회전
+            starField.rotation.y += 0.0001;
+            
+            // 행성 회전 업데이트
+            updatePlanets();
+            
+            // 렌더링
+            renderer.render(scene, camera);
+            
+            // 다음 프레임
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        // 추락 애니메이션 시작 - 시간 단축됨
+        function startFallingAnimation() {
+            // 게임 상태 변경
+            gameActive = false;
+            isFallingAnimation = true;
+            
+            // 현재 진행 중인 애니메이션 중지하고 시작
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+            
+            // 애니메이션의 초기 상태 설정
+            let fallDuration = 0;
+            const maxFallDuration = 20; // 애니메이션 최대 지속 시간 - 적절하게 조정
+            
+            // 플레이어 회전 애니메이션 함수
+            const fallingAnimation = () => {
+                // 애니메이션 지속 시간 증가
+                fallDuration++;
+                
+                // 플레이어가 떨어지면서 회전 - 더 빠르게
+                player.rotation.x += 0.2; // 회전 속도 증가 (0.1 -> 0.2)
+                player.rotation.z += 0.3; // 회전 속도 증가 (0.15 -> 0.3)
+                
+                // 중력을 증가시켜 가속 효과
+                velocityY += gravity * 1.5; // 중력 효과 증가 (1.2 -> 1.5)
+                player.position.y -= velocityY;
+                
+                // 카메라가 플레이어를 약간 느슨하게 따라감
+                camera.position.y = player.position.y + 8;
+                camera.lookAt(player.position);
+                
+                // 행성 회전 업데이트 (추가)
+                updatePlanets();
+                
+                // 렌더링
+                renderer.render(scene, camera);
+                
+                // 충분히 떨어졌거나 최대 지속 시간에 도달하면 게임 오버 호출
+                if (player.position.y < camera.position.y - 8 || fallDuration > maxFallDuration) { // 체크 조건 조정
+                    console.log("Falling animation ended - calling gameOver()");
+                    isFallingAnimation = false;
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = null;
+                    
+                    // 즉시 게임오버 호출 (지연 시간 제거)
+                    gameOver();
+                    return;
+                }
+                
+                // 다음 프레임 요청
+                animationFrameId = requestAnimationFrame(fallingAnimation);
+            };
+            
+            // 애니메이션 시작
+            animationFrameId = requestAnimationFrame(fallingAnimation);
+        }
+
+        // 게임 오버 함수 - 수정 없음
+        function gameOver() {
+            console.log("Game over function called");
+            
+            // 게임 상태 변경 - 모든 상태 초기화
+            gameActive = false;
+            isFallingAnimation = false;
+            
+            // 모든 애니메이션 중지 - 더 확실하게
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            
+            // 최고 점수 업데이트
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('highScore', highScore);
+                highScoreDisplay.textContent = `High Score: ${highScore}`;
+            }
+            
+            // 점수 표시 업데이트
+            finalScore.textContent = `Score: ${score}`;
+            highScoreElement.textContent = `High Score: ${highScore}`;
+            
+            // 게임 오버 화면 표시 - 필수 CSS 변경
+            gameOverScreen.style.display = 'flex';
+            gameOverScreen.style.opacity = '1';
+            gameOverScreen.style.pointerEvents = 'auto';
+            gameOverScreen.style.visibility = 'visible';
+            
+            console.log("Game over screen should be visible now");
+        }
+    </script>
+</body>
+</html>
+
+        function playDoubleJumpSound() {
+            try {
+                const audio = new Audio();
+                audio.src = 'data:audio/wav;base64,UklGRgQMAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YeALAACAgICAgICAgICAgICAgICAgIC
